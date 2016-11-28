@@ -1,0 +1,4 @@
+*.txt
+*.avro
+*.json
+!schema.json
