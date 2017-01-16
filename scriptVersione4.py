@@ -21,7 +21,7 @@ while True:
 			oggettoJSON = "{ "
 			i = 0
 			for campo in campiJSON:
-				oggettoJSON = oggettoJSON + "\"" + campo + "\": \"" + lista[i] + "\","
+				oggettoJSON = oggettoJSON + "\"" + campo + "\": \"" + str(lista[i]).replace("\n", "") + "\","
 				i = i + 1
 			oggettoJSON = oggettoJSON[:-1]
 			oggettoJSON = oggettoJSON + " },"
