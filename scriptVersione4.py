@@ -2,27 +2,23 @@
 import os, csv, time
 from time import gmtime, strftime
 from datetime import datetime
-flag = True
 #campiJSON = { "id", "utc_timestamp", "lat", "lon", "ele", "temp", "angle1", "angle2"}
 campiJSON = { "id", "utc_timestamp"}
 oldLines = 0														
 lastEditTxt = os.stat("temperature.txt").st_mtime
 #fileBackup = open(strftime("%Y-%m-%d-%H:00.json", gmtime()),"a")
 giorno = datetime.now().hour
-#path = "/home/xubuntu/" + strftime("%Y-%m-%d-%H",gmtime())
-path = "/home/xubuntu/" + strftime("%Y-%m-%d",gmtime())
+path = "/home/xubuntu/" + strftime("%Y-%m-%d-%H",gmtime())
 os.mkdir(path)
 					
-while flag:
+while True:
 	newEditTxt = os.stat("temperature.txt").st_mtime
 	if giorno != datetime.now().hour:
 		giorno = datetime.now().hour
-	#	path = "/home/xubuntu/" + strftime("%Y-%m-%d-%H",gmtime())
-		path = "/home/xubuntu/" + strftime("%Y-%m-%d",gmtime())
+		path = "/home/xubuntu/" + strftime("%Y-%m-%d-%H",gmtime())
 		os.mkdir(path)
 	#	fileBackup.close()
-	#fileBackup = open(strftime(path + "/%Y-%m-%d-%H:%M.json", gmtime()),"a")
-	fileBackup = open(strftime(path + "/%Y-%m-%d-%H:00.json", gmtime()),"a")
+	fileBackup = open(strftime(path + "/%Y-%m-%d-%H:%M.json", gmtime()),"a")
 	if newEditTxt > lastEditTxt:
 		fileTxt = open("temperature.txt", "r")
 		data = fileTxt.readlines()
