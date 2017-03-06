@@ -22,7 +22,7 @@ def pickHour():
 def pickDay():
 	return datetime.now().day
 
-def scriviFile(oldLines, fileBackup, virgola, campiJSON):
+def scriviFile(oldLines, fileBackup, virgola, campiJSON, lastEditTxt, newEditTxt):
 	fileTxt = open("temperature.txt", "r")
 	data = fileTxt.readlines()
 	newLines = len(data)
@@ -47,7 +47,7 @@ def scriviFile(oldLines, fileBackup, virgola, campiJSON):
 	fileTxt.close()
 	time.sleep(5)
 
-	return oldLines
+	return oldLines, lastEditTxt
 
 #TIME_LOG - parametro per tempo di cambio file
 #TIME_DIR - parametro per tempo di cambio cartella
@@ -63,10 +63,10 @@ else:
 
 if TIME_DIR == "ora":
 	TIME_DIR = pickHour
-	strTimeDir = strTimeLog = "%Y-%m-%d-%H:00"
+	strTimeDir = "%Y-%m-%d-%H:00"
 elif TIME_DIR == "giorno":
 	TIME_DIR = pickDay
-	strTimeDir = strTimeLog = "%Y-%m-%d"
+	strTimeDir = "%Y-%m-%d"
 else:
 	raise ValueError
 
@@ -78,8 +78,8 @@ temp.close()
 oldLines = 0
 lastEditTxt = os.stat("temperature.txt").st_mtime
 
-timeLog = TIME_LOG
-timeDir = TIME_DIR
+timeLog = TIME_LOG()
+timeDir = TIME_DIR()
 PATH = LOG_PATH + "/" + strTimeDir
 os.mkdir(strftime(PATH, localtime()))
 virgola = False
@@ -87,18 +87,18 @@ virgola = False
 schema = avro.schema.parse(open("schema-prova.avsc", "rb").read())
 
 while True:
-	while timeDir is TIME_DIR:
+	while timeDir == TIME_DIR():
 		#DA PROVARE
 		fileBackup = open(strftime(PATH + "/" + strTimeLog, localtime()), "a")
-		while timeLog is TIME_LOG:
+		while timeLog == TIME_LOG():
 			newEditTxt = os.stat("temperature.txt").st_mtime
 			if newEditTxt > lastEditTxt:
-				oldLines = scriviFile(oldLines, fileBackup, virgola, campiJSON)
+				oldLines, lastEditTxt = scriviFile(oldLines, fileBackup, virgola, campiJSON, lastEditTxt, newEditTxt)
      
 		fileBackup.close()
-		timeLog = TIME_LOG
+		timeLog = TIME_LOG()
 		virgola = False
 
-	timeDir = TIME_DIR
+	timeDir = TIME_DIR()
 	os.mkdir(os.mkdir(strftime(PATH, localtime())))
 
