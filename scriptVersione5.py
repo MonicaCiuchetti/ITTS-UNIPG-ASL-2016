@@ -1,4 +1,7 @@
-import os, time
+###############################
+### Librerie                ###
+###############################
+import os
 from time import localtime, strftime
 from datetime import datetime
 import json
@@ -6,51 +9,72 @@ import json
 import avro.schema
 from avro.io import DatumWriter
 
-#Parametri
+###############################
+### Funzioni                ###
+###############################
+
+#restituisce minuto attuale
+def pickMinute():
+	return datetime.now().minute
+
+#restituisce ora attuale
+def pickHour():
+	return datetime.now().hour
+
+#restituisce giorno attuale
+def pickDay():
+	return datetime.now().day
+
+#scrive file backup, formatta in avro e spedisce su kafka
+def scriviFile(oldLines, newFile):
+	mini = open(MINICOM_FILE, "r")
+	data = mini.readlines()
+	mini.close()
+	newLines = len(data)
+	
+	while oldLines < newLines - 1:
+		riga = data[oldLines].replace("\n", "")
+		stringaJSON = getJSON(riga)
+
+		backup = open(strftime(PATH + "/" + strTimeLog, localtime()), "a")
+		if newFile:
+			newFile = False
+		else:
+			backup.write(',')
+		backup.write(stringaJSON)
+		backup.close()
+		#crea avro
+		#manda su kafka
+		oldLines += 1
+
+	return oldLines
+
+def getJSON(line):
+	lista = line.split("   ")
+
+	if len(lista) != len(campiJSON):
+		raise ValueError("Schema diverso da campi del minicom!")
+
+	stringaJSON = '{'
+	for i in range(len(campiJSON)):
+		stringaJSON += '"' + campiJSON[i]['name'] + '": '
+		if campiJSON[i]['type'] != "string":
+			stringaJSON += lista[i]
+		else:
+			stringaJSON += '"' + lista[i] + '"'
+		stringaJSON += ','
+	stringaJSON = stringaJSON[:-1] + '}'
+
+	return stringaJSON
+
+###############################
+### Parametri               ###
+###############################
 TIME_LOG = "minuto"
 TIME_DIR = "ora"
 AVRO_SCHEMA = "schema-prova.avsc"
 LOG_PATH = "/home/asl-2016"
-
-#Funzioni
-def pickMinute():
-	return datetime.now().minute
-
-def pickHour():
-	return datetime.now().hour
-
-def pickDay():
-	return datetime.now().day
-
-def scriviFile(oldLines, fileBackup, virgola, campiJSON, lastEditTxt, newEditTxt):
-	fileTxt = open("temperature.txt", "r")
-	data = fileTxt.readlines()
-	newLines = len(data)
-	while oldLines < newLines - 1:
-		riga = data[oldLines]
-		riga.replace("\n", "")
-		lista = riga.split("   ")
-		if virgola:
-			fileBackup.write(",")
-		else:
-			virgola = True
-		oggettoJSON = "{ "
-		i = 0
-		for campo in campiJSON:
-			oggettoJSON = oggettoJSON + "\"" + campo['name'] + "\": \"" + str(lista[i]).replace("\n", "") + "\","
-			i = i + 1
-		oggettoJSON = oggettoJSON[:-1]
-		oggettoJSON = oggettoJSON + " }"
-		fileBackup.write(oggettoJSON)
-		oldLines = oldLines + 1
-	lastEditTxt = newEditTxt
-	fileTxt.close()
-	time.sleep(5)
-
-	return oldLines, lastEditTxt
-
-#TIME_LOG - parametro per tempo di cambio file
-#TIME_DIR - parametro per tempo di cambio cartella
+MINICOM_FILE = "temperature.txt"
 
 if TIME_LOG == "minuto":
 	TIME_LOG = pickMinute
@@ -59,7 +83,7 @@ elif TIME_LOG == "ora":
 	TIME_LOG = pickHour
 	strTimeLog = "%Y-%m-%d-%H:00.json"
 else:
-	raise ValueError
+	raise ValueError("formato orario errato")
 
 if TIME_DIR == "ora":
 	TIME_DIR = pickHour
@@ -68,37 +92,43 @@ elif TIME_DIR == "giorno":
 	TIME_DIR = pickDay
 	strTimeDir = "%Y-%m-%d"
 else:
-	raise ValueError
+	raise ValueError("formato orario errato")
 
-temp = open(AVRO_SCHEMA, "r")
-campiJSON = json.loads(temp.read())['fields']
-temp.close()
-
-#Ultima modifica di inizializzazione
-oldLines = 0
-lastEditTxt = os.stat("temperature.txt").st_mtime
-
-timeLog = TIME_LOG()
-timeDir = TIME_DIR()
 PATH = LOG_PATH + "/" + strTimeDir
-os.mkdir(strftime(PATH, localtime()))
-virgola = False
+campiJSON = json.loads(open(AVRO_SCHEMA, "r").read())['fields']
 
-schema = avro.schema.parse(open("schema-prova.avsc", "rb").read())
+###############################
+### MAIN                    ###
+###############################
+def main():
+	oldLines = 0
+	lastEditTxt = os.stat(MINICOM_FILE).st_mtime
 
-while True:
-	while timeDir == TIME_DIR():
-		#DA PROVARE
-		fileBackup = open(strftime(PATH + "/" + strTimeLog, localtime()), "a")
-		while timeLog == TIME_LOG():
-			newEditTxt = os.stat("temperature.txt").st_mtime
-			if newEditTxt > lastEditTxt:
-				oldLines, lastEditTxt = scriviFile(oldLines, fileBackup, virgola, campiJSON, lastEditTxt, newEditTxt)
-     
-		fileBackup.close()
-		timeLog = TIME_LOG()
-		virgola = False
-
+	timeLog = TIME_LOG()
 	timeDir = TIME_DIR()
-	os.mkdir(os.mkdir(strftime(PATH, localtime())))
 
+	temp = strftime(PATH, localtime())
+	if not os.path.isdir(temp):
+		os.mkdir(temp)
+
+	schema = avro.schema.parse(open("schema-prova.avsc", "rb").read())
+
+	while True:
+		while timeDir == TIME_DIR():
+			newFile = True
+			timeLog = TIME_LOG()
+			while timeLog == TIME_LOG():
+				newEditTxt = os.stat(MINICOM_FILE).st_mtime
+				if newEditTxt > lastEditTxt:
+					oldLines = scriviFile(oldLines, newFile)
+					lastEditTxt = newEditTxt
+					newFile = False
+		
+		timeDir = TIME_DIR()
+
+		temp = strftime(PATH, localtime())
+		if not os.path.isdir(temp):
+			os.mkdir(temp)
+
+if __name__ == "__main__":
+	main()
