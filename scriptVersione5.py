@@ -2,12 +2,15 @@
 ### Librerie                ###
 ###############################
 import os
+import io
 from time import localtime, strftime
 from datetime import datetime
 import json
 
 import avro.schema
 from avro.io import DatumWriter
+
+from kafka import KafkaProducer
 
 ###############################
 ### Funzioni                ###
@@ -43,8 +46,7 @@ def scriviFile(oldLines, newFile):
 			backup.write(',')
 		backup.write(stringaJSON)
 		backup.close()
-		#crea avro
-		#manda su kafka
+		sendToKafka(stringaJSON)
 		oldLines += 1
 
 	return oldLines
@@ -67,6 +69,20 @@ def getJSON(line):
 
 	return stringaJSON
 
+def sendToKafka(stringaJSON):
+	oggettoJSON = json.loads(stringaJSON, encoding="utf-8")
+
+	schema = avro.schema.parse(open("schema-prova.avsc", "rb").read())
+	writer = avro.io.DatumWriter(schema)
+	bytes_writer = io.BytesIO()
+	encoder = avro.io.BinaryEncoder(bytes_writer)
+
+	writer.write(oggettoJSON, encoder)
+
+	producer = KafkaProducer(bootstrap_servers=KAFKA_SOCK)
+	producer.send(KAFKA_TOPIC_NAME, bytes_writer.getvalue())
+	producer.flush()
+
 ###############################
 ### Parametri               ###
 ###############################
@@ -75,6 +91,8 @@ TIME_DIR = "ora"
 AVRO_SCHEMA = "schema-prova.avsc"
 LOG_PATH = "/home/asl-2016"
 MINICOM_FILE = "temperature.txt"
+KAFKA_SOCK = "localhost:9092"
+KAFKA_TOPIC_NAME = "nometopic"
 
 if TIME_LOG == "minuto":
 	TIME_LOG = pickMinute
@@ -110,8 +128,6 @@ def main():
 	temp = strftime(PATH, localtime())
 	if not os.path.isdir(temp):
 		os.mkdir(temp)
-
-	schema = avro.schema.parse(open("schema-prova.avsc", "rb").read())
 
 	while True:
 		while timeDir == TIME_DIR():
